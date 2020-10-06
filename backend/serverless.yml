@@ -14,8 +14,7 @@ provider:
 
   environment:
     TODOS_TABLE: Todos-${self:provider.stage}
-    # IMAGES_TABLE: Images-${self:provider.stage}
-    # IMAGE_ID_INDEX: ImageIdIndex
+    USER_ID_INDEX: UserIdIndex
     # CONNECTIONS_TABLE: Connections-${self:provider.stage}
     # IMAGES_S3_BUCKET: serverless-udagram-images-${self:provider.stage}
     # SIGNED_URL_EXPIRATION: 300
@@ -27,21 +26,29 @@ provider:
     - Effect: Allow
       Action:
         - dynamodb:Scan
+        - dynamodb:Query
         - dynamodb:PutItem
         - dynamodb:GetItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
       Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
 
 functions:
   RS256Auth:
     handler: src/lambda/auth/rs256Auth0Authorizer.handler
 
   # # TODO: Configure this function
-  # GetTodos:
-  #   handler: src/lambda/http/getTodos.handler
-  #   events:
-  #     - http:
-  #         method: get
-  #         path: todos
+  GetTodos:
+    handler: src/lambda/http/getTodos.handler
+    events:
+      - http:
+          method: get
+          path: todos
+          cors: true
 
   # TODO: Configure this function
   CreateTodo:
@@ -53,20 +60,22 @@ functions:
           cors: true
 
   # TODO: Configure this function
-  # UpdateTodo:
-  #   handler: src/lambda/http/updateTodo.handler
-  #   events:
-  #     - http:
-  #         method: patch
-  #         path: todos/{todoId}
+  UpdateTodo:
+    handler: src/lambda/http/updateTodo.handler
+    events:
+      - http:
+          method: patch
+          path: todos/{todoId}
+          cors: true
 
   # TODO: Configure this function
-  # DeleteTodo:
-  #   handler: src/lambda/http/deleteTodo.handler
-  #   events:
-  #     - http:
-  #         method: delete
-  #         path: todos/{todoId}
+  DeleteTodo:
+    handler: src/lambda/http/deleteTodo.handler
+    events:
+      - http:
+          method: delete
+          path: todos/{todoId}
+          cors: true
 
   # TODO: Configure this function
   # GenerateUploadUrl:
@@ -94,10 +103,19 @@ resources:
       Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
-          - AttributeName: id
+          - AttributeName: todoId
+            AttributeType: S
+          - AttributeName: userId
             AttributeType: S
         KeySchema:
-          - AttributeName: id
+          - AttributeName: todoId
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.TODOS_TABLE}
+        GlobalSecondaryIndexes:
+          - IndexName: ${self:provider.environment.USER_ID_INDEX}
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL

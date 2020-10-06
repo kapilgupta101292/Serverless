@@ -17,24 +17,35 @@ export const handler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   console.log('Processing event: ', event)
-  const toDoId = uuid.v4()
+  const todoId = uuid.v4()
 
   const newTodoBody: CreateTodoRequest = JSON.parse(event.body)
 
   const newTodoItem = {
-    id: toDoId,
+    todoId,
     userId: getUserId(event),
     ...newTodoBody
   }
   console.log(' New Todo Item :', newTodoItem)
 
-  await docClient
-    .put({
-      TableName: groupsTable,
-      Item: newTodoItem
-    })
-    .promise()
-
+  try {
+    await docClient
+      .put({
+        TableName: groupsTable,
+        Item: newTodoItem
+      })
+      .promise()
+  } catch (err) {
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        error: err
+      })
+    }
+  }
   return {
     statusCode: 201,
     headers: {

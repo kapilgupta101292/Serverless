@@ -1,62 +1,31 @@
 import 'source-map-support/register'
-import * as uuid from 'uuid'
-import * as AWS from 'aws-sdk'
-import {
-  APIGatewayProxyEvent,
-  APIGatewayProxyHandler,
-  APIGatewayProxyResult
-} from 'aws-lambda'
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
 import { CreateTodoRequest } from '../../requests/CreateTodoRequest'
-import { getUserId } from '../utils'
 import { createLogger } from '../../utils/logger'
 
-const docClient = new AWS.DynamoDB.DocumentClient()
+import * as middy from 'middy'
+import { cors } from 'middy/middlewares'
+import { createTodo } from '../../businesslogic/todos'
+
 const logger = createLogger('http.createTodo')
-const groupsTable = process.env.TODOS_TABLE
 
-export const handler: APIGatewayProxyHandler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
-  logger.debug('Processing event: ', event)
-  const todoId = uuid.v4()
-  const newTodoBody: CreateTodoRequest = JSON.parse(event.body)
+export const handler = middy(
+  async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+    logger.debug('Processing event for Create Todo: ', event)
 
-  const newTodoItem = {
-    todoId,
-    userId: getUserId(event),
-    ...newTodoBody
-  }
-  logger.debug(' New Todo Item :', newTodoItem)
-  try {
-    await docClient
-      .put({
-        TableName: groupsTable,
-        Item: newTodoItem
-      })
-      .promise()
-  } catch (err) {
-    logger.error('Error occurred while creating the Todo', event, err)
+    const createTodoRequest: CreateTodoRequest = JSON.parse(event.body)
+    const authorization = event.headers.Authorization
+    const createdTodo = await createTodo(createTodoRequest, authorization)
+
+    logger.debug('Created Todo: ', createdTodo)
+
     return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
+      statusCode: 201,
       body: JSON.stringify({
-        error: err
+        item: createdTodo
       })
     }
   }
-
-  logger.debug('Successfully created the Todo')
-  return {
-    statusCode: 201,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true
-    },
-    body: JSON.stringify({
-      item: newTodoItem
-    })
-  }
-}
+)
+handler.use(cors({ credentials: true }))

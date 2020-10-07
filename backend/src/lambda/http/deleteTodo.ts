@@ -1,57 +1,30 @@
 import 'source-map-support/register'
 
-import {
-  APIGatewayProxyEvent,
-  APIGatewayProxyResult,
-  APIGatewayProxyHandler
-} from 'aws-lambda'
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
-import * as AWS from 'aws-sdk'
 import { createLogger } from '../../utils/logger'
 
-const docClient = new AWS.DynamoDB.DocumentClient()
-const todosTable = process.env.TODOS_TABLE
+import * as middy from 'middy'
+import { cors } from 'middy/middlewares'
+import { deleteTodo } from '../../businesslogic/todos'
+
 const logger = createLogger('http.deleteTodo')
 
-export const handler: APIGatewayProxyHandler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
-  const todoId = event.pathParameters.todoId
-  logger.debug('Processing delete request for todoId: ' + todoId)
+export const handler = middy(
+  async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+    logger.debug(`Processing event for Delete Todo event:  ${event}`)
 
-  try {
-    await docClient
-      .delete({
-        TableName: todosTable,
-        Key: {
-          todoId: todoId
-        },
-        ConditionExpression: 'todoId = :todoId',
-        ExpressionAttributeValues: {
-          ':todoId': todoId
-        }
-      })
-      .promise()
-  } catch (err) {
-    logger.error('Error occurred while deleting the Todo', event, err)
+    const todoId = event.pathParameters.todoId
+    const authorization = event.headers.Authorization
+
+    logger.debug(`Deleting the Todo with todoId: ${todoId}`)
+    await deleteTodo(authorization, todoId)
+
     return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        error: err
-      })
+      statusCode: 200,
+      body: JSON.stringify({})
     }
   }
+)
 
-  logger.debug('Successfully deleted the todo')
-  return {
-    statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true
-    },
-    body: JSON.stringify({})
-  }
-}
+handler.use(cors({ credentials: true }))

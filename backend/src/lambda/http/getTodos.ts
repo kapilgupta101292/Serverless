@@ -1,64 +1,29 @@
 import 'source-map-support/register'
 
-import {
-  APIGatewayProxyEvent,
-  APIGatewayProxyResult,
-  APIGatewayProxyHandler
-} from 'aws-lambda'
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
-import * as AWS from 'aws-sdk'
-
-import { getUserId } from '../utils'
 import { createLogger } from '../../utils/logger'
 
-const docClient = new AWS.DynamoDB.DocumentClient()
-
-const todosTable = process.env.TODOS_TABLE
-const userIdIndex = process.env.USER_ID_INDEX
+import * as middy from 'middy'
+import { cors } from 'middy/middlewares'
+import { getTodosForUser } from '../../businesslogic/todos'
 
 const logger = createLogger('http.getTodos')
 
-export const handler: APIGatewayProxyHandler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
-  const userId = getUserId(event)
-  logger.debug('Processing request for the user: ', userId)
+export const handler = middy(
+  async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+    logger.debug(`Processing event for Get Todo event:  ${event}`)
 
-  let result
-  try {
-    result = await docClient
-      .query({
-        TableName: todosTable,
-        IndexName: userIdIndex,
-        KeyConditionExpression: 'userId = :userId',
-        ExpressionAttributeValues: {
-          ':userId': userId
-        },
-        ScanIndexForward: false
-      })
-      .promise()
-  } catch (err) {
-    logger.error('Error occurred while getting the Todos', event, err)
+    const authorization = event.headers.Authorization
+    const todoItems = await getTodosForUser(authorization)
+
     return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
+      statusCode: 200,
       body: JSON.stringify({
-        error: err
+        items: todoItems
       })
     }
   }
+)
 
-  logger.debug('Successfully fetched the data for the userId:', userId)
-  const items = result.Items
-  return {
-    statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*'
-    },
-    body: JSON.stringify({
-      items
-    })
-  }
-}
+handler.use(cors({ credentials: true }))

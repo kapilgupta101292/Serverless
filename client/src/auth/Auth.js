@@ -17,6 +17,7 @@ export default class Auth {
   });
 
   constructor(history) {
+
     this.history = history
 
     this.login = this.login.bind(this);

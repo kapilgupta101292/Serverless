@@ -7,70 +7,40 @@ import {
 } from 'aws-lambda'
 
 import * as AWS from 'aws-sdk'
+
+import * as AWSXRay from 'aws-xray-sdk'
+import * as middy from 'middy'
+import { cors } from 'middy/middlewares'
 import { createLogger } from '../../utils/logger'
 
-const docClient = new AWS.DynamoDB.DocumentClient()
-const s3 = new AWS.S3({
+const XAWS = AWSXRay.captureAWS(AWS)
+const s3 = new XAWS.S3({
   signatureVersion: 'v4'
 })
 
-const todosTable = process.env.TODOS_TABLE
 const bucketName = process.env.ATTACHMENTS_S3_BUCKET
 const urlExpiration = process.env.SIGNED_URL_EXPIRATION
 
 const logger = createLogger('http.generateUploadUrl')
 
-export const handler: APIGatewayProxyHandler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
-  const todoId = event.pathParameters.todoId
-  logger.debug('Generating URL for the todoId:', todoId)
-  const signedURL = getUploadUrl(todoId)
-  logger.debug('Genered URL for the todoId:', signedURL)
-  const attachementURL = signedURL.split('?')[0]
+export const handler = middy(
+  async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+    logger.debug(`Processing event for generateUploadUrl :  ${event}`)
+    const todoId = event.pathParameters.todoId
+    logger.debug('Generating URL for the todoId:', todoId)
+    const signedURL = getUploadUrl(todoId)
+    logger.debug('Generated URL for the todoId:', signedURL)
 
-  try {
-    await docClient
-      .update({
-        TableName: todosTable,
-        Key: {
-          todoId: todoId
-        },
-        UpdateExpression: 'set attachmentUrl = :attachmentUrl',
-        ExpressionAttributeValues: {
-          ':attachmentUrl': attachementURL
-        },
-        ReturnValues: 'UPDATED_NEW'
-      })
-      .promise()
-  } catch (err) {
-    logger.error(
-      'Error occurred while generateUploadUrl for the Todo',
-      event,
-      err
-    )
     return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
+      statusCode: 200,
       body: JSON.stringify({
-        error: err
+        uploadUrl: signedURL
       })
     }
   }
+)
 
-  logger.debug('Successfully created the Upload URL for the Todo')
-  return {
-    statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*'
-    },
-    body: JSON.stringify({
-      uploadUrl: signedURL
-    })
-  }
-}
+handler.use(cors({ credentials: true }))
 
 function getUploadUrl(todoId: string) {
   return s3.getSignedUrl('putObject', {

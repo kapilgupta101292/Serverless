@@ -4,6 +4,8 @@ service:
 plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
+  - serverless-aws-documentation
+  - serverless-reqvalidator-plugin
 
 provider:
   name: aws
@@ -14,29 +16,44 @@ provider:
 
   environment:
     TODOS_TABLE: Todos-${self:provider.stage}
-    USER_ID_INDEX: UserIdIndex
+    INDEX_TABLE: IndexTable-${self:provider.stage}
     ATTACHMENTS_S3_BUCKET: serverless-todo-app-attachments-kg-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
 
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:Scan
-        - dynamodb:Query
-        - dynamodb:PutItem
-        - dynamodb:GetItem
-        - dynamodb:UpdateItem
-        - dynamodb:DeleteItem
-      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
-    - Effect: Allow
-      Action:
-        - dynamodb:Query
-      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
-    - Effect: Allow
-      Action:
-        - s3:PutObject
-        - s3:GetObject
-      Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENTS_S3_BUCKET}/*
+  custom:
+    documentation:
+      api:
+        info:
+          version: v1.0.0
+          title: Todos App for Serverless Project
+          description: Manage Todos using the Serverless API
+      models:
+        - name: CreateRequest
+          contentType: application/json
+          schema: ${file(model-validators/create-todo-request.json)}
+        - name: UpdateRequest
+          contentType: application/json
+          schema: ${file(model-validators/update-todo-request.json)}
+
+  # iamRoleStatements:
+  #   - Effect: Allow
+  #     Action:
+  #       - dynamodb:Scan
+  #       - dynamodb:Query
+  #       - dynamodb:PutItem
+  #       - dynamodb:GetItem
+  #       - dynamodb:UpdateItem
+  #       - dynamodb:DeleteItem
+  #     Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+  #   - Effect: Allow
+  #     Action:
+  #       - dynamodb:Query
+  #     Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
+  #   - Effect: Allow
+  #     Action:
+  #       - s3:PutObject
+  #       - s3:GetObject
+  #     Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENTS_S3_BUCKET}/*
 
 functions:
   Auth0Auth:
@@ -44,51 +61,140 @@ functions:
 
   GetTodos:
     handler: src/lambda/http/getTodos.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.INDEX_TABLE}
+      - Effect: 'Allow'
+        Action:
+          - 'xray:PutTraceSegments'
+          - 'xray:PutTelemetryRecords'
+        Resource:
+          - '*'
     events:
       - http:
           method: get
           authorizer: Auth0Auth
           path: todos
           cors: true
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Get Todos
+            description: Get All Todos for a User
 
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: 'Allow'
+        Action:
+          - 'xray:PutTraceSegments'
+          - 'xray:PutTelemetryRecords'
+        Resource:
+          - '*'
     events:
       - http:
           method: post
           authorizer: Auth0Auth
           path: todos
           cors: true
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Create TODO
+            description: Create a todo with given request body
+            requestModels:
+              'application/json': CreateRequest
 
   UpdateTodo:
     handler: src/lambda/http/updateTodo.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: 'Allow'
+        Action:
+          - 'xray:PutTraceSegments'
+          - 'xray:PutTelemetryRecords'
+        Resource:
+          - '*'
     events:
       - http:
           method: patch
           authorizer: Auth0Auth
           path: todos/{todoId}
           cors: true
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Update TODO
+            description: Update a todo with given request body
+            requestModels:
+              'application/json': UpdateRequest
 
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
+    iamRoleStatements:
+      - Effect: 'Allow'
+        Action:
+          - dynamodb:DeleteItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: 'Allow'
+        Action:
+          - 'xray:PutTraceSegments'
+          - 'xray:PutTelemetryRecords'
+        Resource:
+          - '*'
     events:
       - http:
           method: delete
           authorizer: Auth0Auth
           path: todos/{todoId}
           cors: true
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Delete TODO
+            description: Delete Todo with given Id for a user.
 
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
+    iamRoleStatements:
+      - Effect: 'Allow'
+        Action:
+          - s3:PutObject
+          - s3:GetObject
+        Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENTS_S3_BUCKET}/*
+      - Effect: 'Allow'
+        Action:
+          - 'xray:PutTraceSegments'
+          - 'xray:PutTelemetryRecords'
+        Resource:
     events:
       - http:
           method: post
           authorizer: Auth0Auth
           path: todos/{todoId}/attachment
           cors: true
+          documentation:
+            summary: GenerateUploadUrl for attachment
+            description: Create a Signed URL for the attachment for given todo
+            requestModels:
+              'application/json': CreateRequest
 
 resources:
   Resources:
+    RequestBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: 'request-body-validator'
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
+
     GatewayResponseDefault4XX:
       Type: AWS::ApiGateway::GatewayResponse
       Properties:

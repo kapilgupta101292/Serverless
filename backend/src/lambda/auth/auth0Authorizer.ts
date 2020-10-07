@@ -7,7 +7,7 @@ import { Jwt } from '../../auth/Jwt'
 import { JwtPayload } from '../../auth/JwtPayload'
 import Axios from 'axios'
 
-const logger = createLogger('auth')
+const logger = createLogger('auth/auth0Authorizer')
 
 const jwksUrl = 'https://dev-8w9tdqtz.us.auth0.com/.well-known/jwks.json'
 

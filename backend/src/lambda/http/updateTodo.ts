@@ -1,72 +1,34 @@
 import 'source-map-support/register'
 
-import {
-  APIGatewayProxyEvent,
-  APIGatewayProxyHandler,
-  APIGatewayProxyResult
-} from 'aws-lambda'
-
-import * as AWS from 'aws-sdk'
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
 import { UpdateTodoRequest } from '../../requests/UpdateTodoRequest'
 import { createLogger } from '../../utils/logger'
 
-const docClient = new AWS.DynamoDB.DocumentClient()
+import * as middy from 'middy'
+import { cors } from 'middy/middlewares'
+import { updateTodo } from '../../businesslogic/todos'
 
-const todosTable = process.env.TODOS_TABLE
 const logger = createLogger('http.updateTodo')
 
-export const handler: APIGatewayProxyHandler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
-  const todoId = event.pathParameters.todoId
-  const updatedTodo: UpdateTodoRequest = JSON.parse(event.body)
+export const handler = middy(
+  async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+    logger.debug(`Processing event for Update Todo event:  ${event}`)
 
-  logger.debug('Processing the Todo for update', todoId)
-  logger.debug('Processing the updated object', updatedTodo)
+    const todoId = event.pathParameters.todoId
+    const authorization = event.headers.Authorization
+    const updatedTodo: UpdateTodoRequest = JSON.parse(event.body)
 
-  let result
-  try {
-    const newTodoBody: UpdateTodoRequest = JSON.parse(event.body)
-    result = await docClient
-      .update({
-        TableName: todosTable,
-        Key: {
-          todoId: todoId
-        },
-        UpdateExpression: 'set #n = :nameVal, dueDate = :dueDate, done = :done',
-        ExpressionAttributeNames: {
-          '#n': 'name'
-        },
-        ExpressionAttributeValues: {
-          ':nameVal': newTodoBody.name,
-          ':dueDate': newTodoBody.dueDate,
-          ':done': newTodoBody.done
-        },
-        ReturnValues: 'UPDATED_NEW'
-      })
-      .promise()
-  } catch (err) {
-    logger.error('Error occurred while updating the Todo', event, err)
+    logger.debug(
+      `Processing the Todo for todoId: ${todoId} with info: ${updatedTodo}`
+    )
+    await updateTodo(authorization, todoId, updatedTodo)
+
     return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        error: err
-      })
+      statusCode: 200,
+      body: JSON.stringify({})
     }
   }
+)
 
-  logger.debug('Update successful for the todoId, new Todo', result)
-
-  return {
-    statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true
-    },
-    body: JSON.stringify({})
-  }
-}
+handler.use(cors({ credentials: true }))

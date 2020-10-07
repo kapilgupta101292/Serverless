@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "createTodos",
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "dueDate": {
+            "type": "string"
+        },
+        "done": {
+            "type": "boolean"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "attachmentUrl": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "name",
+        "dueDate"
+    ],
+    "additionalProperties": false
+}

@@ -58,6 +58,20 @@ export async function updateTodo(
   })
 }
 
+export async function updateTodoURL(
+  authorization: string,
+  todoId: string,
+  attachmentUrl: string
+) {
+  logger.debug(
+    `Start of updateTodo with authorization ${authorization}, todoId ${todoId}, attachmentUrl ${attachmentUrl}`
+  )
+  const userId = parseUserId(authorization)
+  logger.debug(`userId: ${userId}`)
+
+  await todoAccess.updateTodoURL(userId, todoId, attachmentUrl)
+}
+
 export async function deleteTodo(authorization: string, todoId: string) {
   logger.debug(
     `Start of deleteTodo with authorization ${authorization}, todoId ${todoId}`

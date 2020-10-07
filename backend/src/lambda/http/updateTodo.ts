@@ -9,11 +9,12 @@ import {
 import * as AWS from 'aws-sdk'
 
 import { UpdateTodoRequest } from '../../requests/UpdateTodoRequest'
+import { createLogger } from '../../utils/logger'
 
 const docClient = new AWS.DynamoDB.DocumentClient()
 
 const todosTable = process.env.TODOS_TABLE
-// const userIdIndex = process.env.USER_ID_INDEX
+const logger = createLogger('http.updateTodo')
 
 export const handler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
@@ -21,9 +22,8 @@ export const handler: APIGatewayProxyHandler = async (
   const todoId = event.pathParameters.todoId
   const updatedTodo: UpdateTodoRequest = JSON.parse(event.body)
 
-  console.log(todoId)
-  console.log(updatedTodo)
-  // TODO: Update a TODO item with the provided id using values in the "updatedTodo" object
+  logger.debug('Processing the Todo for update', todoId)
+  logger.debug('Processing the updated object', updatedTodo)
 
   let result
   try {
@@ -47,6 +47,7 @@ export const handler: APIGatewayProxyHandler = async (
       })
       .promise()
   } catch (err) {
+    logger.error('Error occurred while updating the Todo', event, err)
     return {
       statusCode: 500,
       headers: {
@@ -57,14 +58,15 @@ export const handler: APIGatewayProxyHandler = async (
       })
     }
   }
+
+  logger.debug('Update successful for the todoId, new Todo', result)
+
   return {
     statusCode: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Credentials': true
     },
-    body: JSON.stringify({
-      result
-    })
+    body: JSON.stringify({})
   }
 }

@@ -7,20 +7,20 @@ import {
 } from 'aws-lambda'
 
 import * as AWS from 'aws-sdk'
+import { createLogger } from '../../utils/logger'
 
 const docClient = new AWS.DynamoDB.DocumentClient()
 const todosTable = process.env.TODOS_TABLE
+const logger = createLogger('http.deleteTodo')
 
 export const handler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const todoId = event.pathParameters.todoId
-  console.log(todoId)
-  // TODO: Update a TODO item with the provided id using values in the "updatedTodo" object
+  logger.debug('Processing delete request for todoId: ' + todoId)
 
-  let result
   try {
-    result = await docClient
+    await docClient
       .delete({
         TableName: todosTable,
         Key: {
@@ -33,6 +33,7 @@ export const handler: APIGatewayProxyHandler = async (
       })
       .promise()
   } catch (err) {
+    logger.error('Error occurred while deleting the Todo', event, err)
     return {
       statusCode: 500,
       headers: {
@@ -43,14 +44,14 @@ export const handler: APIGatewayProxyHandler = async (
       })
     }
   }
+
+  logger.debug('Successfully deleted the todo')
   return {
     statusCode: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Credentials': true
     },
-    body: JSON.stringify({
-      result
-    })
+    body: JSON.stringify({})
   }
 }

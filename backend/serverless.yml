@@ -17,9 +17,6 @@ provider:
     USER_ID_INDEX: UserIdIndex
     ATTACHMENTS_S3_BUCKET: serverless-todo-app-attachments-kg-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
-    # THUMBNAILS_S3_BUCKET: serverless-udagram-thumbnail-${self:provider.stage}
-    # AUTH_0_SECRET_ID: Auth0Secret-${self:provider.stage}
-    # AUTH_0_SECRET_FIELD: auth0Secret
 
   iamRoleStatements:
     - Effect: Allow
@@ -42,57 +39,56 @@ provider:
       Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENTS_S3_BUCKET}/*
 
 functions:
-  RS256Auth:
-    handler: src/lambda/auth/rs256Auth0Authorizer.handler
+  Auth0Auth:
+    handler: src/lambda/auth/auth0Authorizer.handler
 
-  # # TODO: Configure this function
   GetTodos:
     handler: src/lambda/http/getTodos.handler
     events:
       - http:
           method: get
+          authorizer: Auth0Auth
           path: todos
           cors: true
 
-  # TODO: Configure this function
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
     events:
       - http:
           method: post
+          authorizer: Auth0Auth
           path: todos
           cors: true
 
-  # TODO: Configure this function
   UpdateTodo:
     handler: src/lambda/http/updateTodo.handler
     events:
       - http:
           method: patch
+          authorizer: Auth0Auth
           path: todos/{todoId}
           cors: true
 
-  # TODO: Configure this function
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     events:
       - http:
           method: delete
+          authorizer: Auth0Auth
           path: todos/{todoId}
           cors: true
 
-  # TODO: Configure this function
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
     events:
       - http:
           method: post
+          authorizer: Auth0Auth
           path: todos/{todoId}/attachment
           cors: true
 
 resources:
   Resources:
-    # TODO: Add any necessary AWS resources
     GatewayResponseDefault4XX:
       Type: AWS::ApiGateway::GatewayResponse
       Properties:

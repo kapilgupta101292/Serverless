@@ -24,28 +24,6 @@ provider:
     ATTACHMENTS_S3_BUCKET: serverless-todo-app-attachments-kg-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
 
-  # iamRoleStatements:
-  #   - Effect: Allow
-  #     Action:
-  #       - codedeploy:*
-  #     Resource:
-  #       - "*"
-  #   - Effect: Allow
-  #     Action:
-  #       - dynamodb:Scan
-  #       - dynamodb:PutItem
-  #       - dynamodb:GetItem
-  #     Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
-  #   - Effect: Allow
-  #     Action:
-  #       - dynamodb:Query
-  #     Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_INDEX}
-  #   - Effect: Allow
-  #     Action:
-  #       - s3:PutObject
-  #       - s3:GetObject
-  #     Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENTS_S3_BUCKET}/*
-
   custom:
     documentation:
       api:
@@ -96,7 +74,9 @@ functions:
           path: todos
           authorizer: Auth0Auth
           cors: true
-          reqValidatorName: RequestBodyValidator
+          request:
+            schema:
+              application/json: ${file(models/createTodoRequest.json)}
           documentation:
             summary: Create TODO
             description: Create a todo with given request body
@@ -129,7 +109,9 @@ functions:
           path: todos/{todoId}
           authorizer: Auth0Auth
           cors: true
-          reqValidatorName: RequestBodyValidator
+          request:
+            schema:
+              application/json: ${file(models/updateTodoRequest.json)}
           documentation:
             summary: Update TODO
             description: Update a todo with given request body
@@ -149,7 +131,6 @@ functions:
           path: todos/{todoId}
           authorizer: Auth0Auth
           cors: true
-          reqValidatorName: RequestBodyValidator
           documentation:
             summary: Delete TODO
             description: Delete Todo with given Id for a user.

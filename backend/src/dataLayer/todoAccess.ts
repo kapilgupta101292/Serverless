@@ -1,15 +1,15 @@
-import * as AWS from "aws-sdk";
-import * as AWSXRay from "aws-xray-sdk";
-import { DocumentClient } from "aws-sdk/clients/dynamodb";
+import * as AWS from 'aws-sdk'
+import * as AWSXRay from 'aws-xray-sdk'
+import { DocumentClient } from 'aws-sdk/clients/dynamodb'
 
-const XAWS = AWSXRay.captureAWS(AWS);
+const XAWS = AWSXRay.captureAWS(AWS)
 
-import { TodoItem } from "../models/TodoItem";
-import { TodoUpdate } from "../models/TodoUpdate";
-import { TodoDelete } from "../models/TodoDelete";
-import { createLogger } from "../utils/logger";
+import { TodoItem } from '../models/TodoItem'
+import { TodoUpdate } from '../models/TodoUpdate'
+import { TodoDelete } from '../models/TodoDelete'
+import { createLogger } from '../utils/logger'
 
-const logger = createLogger("dataLayer.todoAccess");
+const logger = createLogger('dataLayer.todoAccess')
 
 export class TodoAccess {
   constructor(
@@ -19,91 +19,91 @@ export class TodoAccess {
   ) {}
 
   async getTodosForUser(userId: String): Promise<TodoItem[]> {
-    logger.debug(`Getting all Todos for user ${userId}`);
+    logger.debug(`Getting all Todos for user ${userId}`)
 
     const result = await this.docClient
       .query({
         TableName: this.todosTable,
         IndexName: this.indexTable,
-        KeyConditionExpression: "userId = :userId",
-        ExpressionAttributeValues: { ":userId": userId },
-        ScanIndexForward: false,
+        KeyConditionExpression: 'userId = :userId',
+        ExpressionAttributeValues: { ':userId': userId },
+        ScanIndexForward: false
       })
-      .promise();
+      .promise()
 
-    const items = result.Items;
-    logger.debug(`Got the following Todos for user ${items}`);
-    return items as TodoItem[];
+    const items = result.Items
+    logger.debug(`Got the following Todos for user ${items}`)
+    return items as TodoItem[]
   }
 
   async createTodo(todoItem: TodoItem): Promise<TodoItem> {
-    logger.debug(`Creating new Todo with info ${todoItem}`);
+    logger.debug(`Creating new Todo with info ${todoItem}`)
 
     await this.docClient
       .put({
         TableName: this.todosTable,
-        Item: todoItem,
+        Item: todoItem
       })
-      .promise();
+      .promise()
 
-    logger.debug(`Created the required Todo`);
-    return todoItem as TodoItem;
+    logger.debug(`Created the required Todo`)
+    return todoItem as TodoItem
   }
 
   async updateTodo(todoUpdate: TodoUpdate) {
-    logger.debug(`Updating the todo with the following info ${todoUpdate}`);
+    logger.debug(`Updating the todo with the following info ${todoUpdate}`)
     await this.docClient
       .update({
         TableName: this.todosTable,
         Key: {
           userId: todoUpdate.userId,
-          todoId: todoUpdate.todoId,
+          todoId: todoUpdate.todoId
         },
-        UpdateExpression: "set #n = :nameVal, #dd = :dueDate, #d = :done",
+        UpdateExpression: 'set #n = :name, #dd = :dueDate, #d = :done',
         ExpressionAttributeNames: {
-          "#n": "name",
-          "#dd": "dueDate",
-          "#d": "done",
+          '#n': 'name',
+          '#dd': 'dueDate',
+          '#d': 'done'
         },
         ExpressionAttributeValues: {
-          ":name": todoUpdate.name,
-          ":dueDate": todoUpdate.dueDate,
-          ":done": todoUpdate.done,
+          ':name': todoUpdate.name,
+          ':dueDate': todoUpdate.dueDate,
+          ':done': todoUpdate.done
         },
-        ReturnValues: "UPDATED_NEW",
+        ReturnValues: 'UPDATED_NEW'
       })
-      .promise();
+      .promise()
   }
 
   async updateTodoURL(userId: string, todoId: string, attachmentUrl: string) {
-    logger.debug(`Updating the todo with the following info ${attachmentUrl}`);
+    logger.debug(`Updating the todo with the following info ${attachmentUrl}`)
     await this.docClient
       .update({
         TableName: this.todosTable,
         Key: {
           userId: userId,
-          todoId: todoId,
+          todoId: todoId
         },
-        UpdateExpression: "set #au = :attachmentUrl",
+        UpdateExpression: 'set #au = :attachmentUrl',
         ExpressionAttributeNames: {
-          "#au": "attachmentUrl",
+          '#au': 'attachmentUrl'
         },
         ExpressionAttributeValues: {
-          ":attachmentUrl": attachmentUrl,
+          ':attachmentUrl': attachmentUrl
         },
-        ReturnValues: "UPDATED_NEW",
+        ReturnValues: 'UPDATED_NEW'
       })
-      .promise();
+      .promise()
   }
 
   async deleteTodo(todoDelete: TodoDelete) {
-    logger.debug(`Deleting the todo with info ${todoDelete}`);
+    logger.debug(`Deleting the todo with info ${todoDelete}`)
 
     await this.docClient
       .delete({
         TableName: this.todosTable,
-        Key: { userId: todoDelete.userId, todoId: todoDelete.todoId },
+        Key: { userId: todoDelete.userId, todoId: todoDelete.todoId }
       })
-      .promise();
+      .promise()
   }
 }

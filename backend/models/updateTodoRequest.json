@@ -1,22 +1,18 @@
 {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "title": "updateTodos",
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        },
-        "dueDate": {
-            "type": "string"
-        },
-        "done": {
-            "type": "boolean"
-        }
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "todo",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
     },
-    "required": [
-        "name",
-        "dueDate",
-        "done"
-    ],
-    "additionalProperties": false
+    "dueDate": {
+      "type": "string"
+    },
+    "done": {
+      "type": "boolean"
+    }
+  },
+  "required": ["name", "dueDate", "done"],
+  "additionalProperties": false
 }
